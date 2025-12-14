@@ -7,7 +7,6 @@ const multer = require('multer');
 const cors = require('cors');
 const compression = require('compression');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
 const crypto = require('crypto');
 
 // Security middleware imports
@@ -87,16 +86,12 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Session configuration with secure settings
+// Session configuration with secure settings (memory store for now)
 app.use(session({
   secret: process.env.SESSION_SECRET,
   name: 'ctfquest.sid',
   resave: false,
   saveUninitialized: false,
-  store: new MongoStore({
-    mongoUrl: process.env.MONGODB_URI,
-    touchAfter: 24 * 3600 // lazy session update
-  }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
