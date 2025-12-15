@@ -7,6 +7,9 @@ const { protect, authorize } = require('../middleware/auth');
 const { enhancedValidation } = require('../middleware/advancedSecurity');
 const { loginLimiter, generalLimiter, sanitizeInput, validateInput, securityHeaders } = require('../middleware/security');
 const { sendOTPEmail } = require('../utils/email');
+const requestIp = require('request-ip');
+const UAParser = require('ua-parser-js');
+const moment = require('moment-timezone');
 
 // Real-time logging function
 const logActivity = (action, details = {}) => {
@@ -15,15 +18,28 @@ const logActivity = (action, details = {}) => {
 };
 const crypto = require('crypto');
 
-// Helper function to get real IP address
+// Helper function to get real IP address using request-ip
 const getRealIP = (req) => {
-  return req.headers['x-forwarded-for'] || 
-         req.headers['x-real-ip'] || 
-         req.connection.remoteAddress || 
-         req.socket.remoteAddress ||
-         (req.connection.socket ? req.connection.socket.remoteAddress : null) ||
-         req.ip || 
-         'Unknown';
+  const clientIp = requestIp.getClientIp(req);
+  // Clean up IPv6 mapped IPv4 addresses
+  if (clientIp && clientIp.startsWith('::ffff:')) {
+    return clientIp.substring(7);
+  }
+  return clientIp || 'Unknown';
+};
+
+// Helper function to parse user agent
+const parseUserAgent = (userAgentString) => {
+  if (!userAgentString) return 'Unknown';
+  
+  const parser = new UAParser(userAgentString);
+  const result = parser.getResult();
+  
+  const browser = result.browser.name ? `${result.browser.name} ${result.browser.version}` : 'Unknown Browser';
+  const os = result.os.name ? `${result.os.name} ${result.os.version}` : 'Unknown OS';
+  const device = result.device.type ? result.device.type : 'desktop';
+  
+  return `${browser} on ${os} (${device})`;
 };
 
 // Helper function to create login log
@@ -31,27 +47,28 @@ const createLoginLog = async (user, req, status, failureReason = null) => {
   try {
     // Only create log if user exists (has valid _id)
     if (user && user._id) {
-      // Get real IP address and user agent
+      // Get real IP address using request-ip library
       const realIP = getRealIP(req);
-      const userAgent = req.get('User-Agent') || 'Unknown';
       
-      // Create timestamp in Indian timezone (UTC+5:30)
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
-      const istTime = new Date(now.getTime() + istOffset);
+      // Parse user agent for better readability
+      const rawUserAgent = req.get('User-Agent') || 'Unknown';
+      const parsedUserAgent = parseUserAgent(rawUserAgent);
+      
+      // Create timestamp in Indian Standard Time (IST)
+      const istTime = moment().tz('Asia/Kolkata').toDate();
       
       const loginLog = await LoginLog.create({
         user: user._id,
         email: user.email,
         username: user.username,
         ipAddress: realIP,
-        userAgent: userAgent,
+        userAgent: parsedUserAgent,
         loginTime: istTime,
         status,
         failureReason
       });
       
-      console.log(`Login log created: ${user.username} - ${status} - IP: ${realIP}`);
+      console.log(`Login log created: ${user.username} - ${status} - IP: ${realIP} - Agent: ${parsedUserAgent}`);
       return loginLog;
     }
   } catch (error) {

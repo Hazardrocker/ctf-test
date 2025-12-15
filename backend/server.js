@@ -8,6 +8,7 @@ const cors = require('cors');
 const compression = require('compression');
 const session = require('express-session');
 const crypto = require('crypto');
+const requestIp = require('request-ip');
 
 // Security middleware imports
 const { 
@@ -47,6 +48,9 @@ const PORT = process.env.PORT || 5000;
 
 // Trust proxy for accurate IP addresses
 app.set('trust proxy', 1);
+
+// IP address middleware (must be early in the middleware stack)
+app.use(requestIp.mw());
 
 // Security logging (must be first)
 app.use(securityLogger);

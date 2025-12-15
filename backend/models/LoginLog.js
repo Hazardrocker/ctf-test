@@ -24,12 +24,7 @@ const LoginLogSchema = new mongoose.Schema({
   },
   loginTime: {
     type: Date,
-    default: () => {
-      // Create date in Indian timezone (UTC+5:30)
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
-      return new Date(now.getTime() + istOffset);
-    }
+    default: Date.now
   },
   status: {
     type: String,

@@ -118,8 +118,9 @@ function AdminLoginLogs() {
   };
 
   const formatDate = (dateString) => {
-    // Format date in Indian timezone
-    return new Date(dateString).toLocaleString('en-IN', {
+    // Format date in Indian timezone with proper formatting
+    const date = new Date(dateString);
+    return date.toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
       month: '2-digit',
@@ -143,7 +144,7 @@ function AdminLoginLogs() {
     <div className="admin-login-logs">
       <div className="logs-header">
         <h1>Login <span className="highlight">Logs</span></h1>
-        <p>Monitor user login activities (IP and device tracking disabled)</p>
+        <p>Monitor user login activities with real-time IP and device tracking</p>
         <button className="back-button" onClick={() => navigate('/admin')}>
           ← Back to Dashboard
         </button>
