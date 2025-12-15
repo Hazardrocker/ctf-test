@@ -1206,7 +1206,7 @@ router.get('/admin/login-logs', protect, authorize('admin', 'superadmin'), async
     const totalLogs = await LoginLog.countDocuments(query);
     const logs = await LoginLog.find(query)
       .populate('user', 'username email role')
-      .sort({ loginTime: -1 })
+      .sort({ loginTime: -1, createdAt: -1, _id: -1 })
       .limit(limit)
       .skip(skip);
 
@@ -1262,33 +1262,16 @@ router.get('/admin/login-logs/:userId', protect, authorize('admin', 'superadmin'
 });
 
 // @route   DELETE /api/auth/admin/login-logs
-// @desc    Clear old login logs (Admin only)
+// @desc    Clear all login logs (Admin only)
 // @access  Private/Admin
 router.delete('/admin/login-logs', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
-    const { days = 30, all } = req.query;
-    
-    let result;
-    if (all === 'true') {
-      // Delete all login logs
-      result = await LoginLog.deleteMany({});
-    } else {
-      // Delete logs older than specified days
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
-      
-      result = await LoginLog.deleteMany({
-        loginTime: { $lt: cutoffDate }
-      });
-    }
-
-    const message = all === 'true' ? 
-      `Deleted all ${result.deletedCount} login logs` :
-      `Deleted ${result.deletedCount} login logs older than ${days} days`;
+    // Delete all login logs
+    const result = await LoginLog.deleteMany({});
 
     res.json({
       success: true,
-      message,
+      message: `Deleted all ${result.deletedCount} login logs`,
       deletedCount: result.deletedCount
     });
   } catch (error) {

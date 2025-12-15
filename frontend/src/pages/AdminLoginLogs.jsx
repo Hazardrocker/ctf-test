@@ -81,28 +81,18 @@ function AdminLoginLogs() {
     setPage(1);
   };
 
-  const clearOldLogs = async () => {
-    const choice = window.confirm('Choose:\n\nOK = Clear logs older than 30 days\nCancel = Clear ALL logs\n\nClick OK for 30 days, Cancel for ALL');
-    
-    const confirmMessage = choice ? 
-      'Are you sure you want to delete login logs older than 30 days?' :
-      'Are you sure you want to delete ALL login logs? This cannot be undone!';
-    
-    if (!window.confirm(confirmMessage)) {
+  const clearAllLogs = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL login logs? This cannot be undone!')) {
       return;
     }
 
     try {
-      const url = choice ? 
-        '/api/auth/admin/login-logs?days=30' :
-        '/api/auth/admin/login-logs?all=true';
-        
-      const response = await axios.delete(url, {
+      const response = await axios.delete('/api/auth/admin/login-logs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       fetchLogs();
-      alert(response.data.message || 'Login logs cleared successfully');
+      alert(response.data.message || 'All login logs cleared successfully');
     } catch (err) {
       console.error('Error clearing logs:', err);
       setError('Failed to clear logs');
@@ -174,8 +164,8 @@ function AdminLoginLogs() {
           </select>
         </div>
         <div className="actions">
-          <button onClick={clearOldLogs} className="clear-logs-btn">
-            Clear Old Logs
+          <button onClick={clearAllLogs} className="clear-logs-btn">
+            Clear All Logs
           </button>
           <button onClick={fetchLogs} className="refresh-btn">
             Refresh
