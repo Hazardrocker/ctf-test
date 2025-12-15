@@ -15,64 +15,19 @@ const logActivity = (action, details = {}) => {
 };
 const crypto = require('crypto');
 
-// Helper function to extract device info from user agent
-const parseUserAgent = (userAgent) => {
-  if (!userAgent || userAgent === 'Unknown') {
-    return { browser: 'Unknown', os: 'Unknown', device: 'Unknown' };
-  }
-  
-  // Extract browser
-  let browser = 'Unknown';
-  if (userAgent.includes('Chrome')) browser = 'Chrome';
-  else if (userAgent.includes('Firefox')) browser = 'Firefox';
-  else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browser = 'Safari';
-  else if (userAgent.includes('Edge')) browser = 'Edge';
-  else if (userAgent.includes('Opera')) browser = 'Opera';
-  
-  // Extract OS
-  let os = 'Unknown';
-  if (userAgent.includes('Windows')) os = 'Windows';
-  else if (userAgent.includes('Mac')) os = 'macOS';
-  else if (userAgent.includes('Linux')) os = 'Linux';
-  else if (userAgent.includes('Android')) os = 'Android';
-  else if (userAgent.includes('iOS')) os = 'iOS';
-  
-  // Extract device type
-  let device = 'Desktop';
-  if (userAgent.includes('Mobile')) device = 'Mobile';
-  else if (userAgent.includes('Tablet')) device = 'Tablet';
-  
-  return { browser, os, device };
-};
-
-// Helper function to get real IP address
-const getRealIP = (req) => {
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-         req.headers['x-real-ip'] ||
-         req.connection?.remoteAddress ||
-         req.socket?.remoteAddress ||
-         req.ip ||
-         'Unknown';
-};
-
 // Helper function to create login log
 const createLoginLog = async (user, req, status, failureReason = null) => {
   try {
-    const ipAddress = getRealIP(req);
-    const userAgent = req.headers['user-agent'] || 'Unknown';
-    const deviceInfo = parseUserAgent(userAgent);
-    
     // Only create log if user exists (has valid _id)
     if (user && user._id) {
       await LoginLog.create({
         user: user._id,
         email: user.email,
         username: user.username,
-        ipAddress,
-        userAgent,
+        ipAddress: 'Hidden',
+        userAgent: 'Hidden',
         status,
-        failureReason,
-        deviceInfo
+        failureReason
       });
     }
   } catch (error) {

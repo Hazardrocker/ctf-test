@@ -122,7 +122,7 @@ function AdminLoginLogs() {
           <input
             type="text"
             name="search"
-            placeholder="Search by email, username, or IP..."
+            placeholder="Search by email or username..."
             value={filters.search}
             onChange={handleFilterChange}
             className="search-input"
@@ -175,8 +175,6 @@ function AdminLoginLogs() {
               <th>User</th>
               <th>Email</th>
               <th>Status</th>
-              <th>IP Address</th>
-              <th>Device</th>
               <th>Failure Reason</th>
             </tr>
           </thead>
@@ -196,22 +194,13 @@ function AdminLoginLogs() {
                 </td>
                 <td>{log.email}</td>
                 <td>{getStatusBadge(log.status)}</td>
-                <td className="ip-address">{log.ipAddress}</td>
-                <td>
-                  <div className="device-info">
-                    <div>{log.deviceInfo?.browser || 'Unknown'}</div>
-                    <div className="device-details">
-                      {log.deviceInfo?.os} • {log.deviceInfo?.device}
-                    </div>
-                  </div>
-                </td>
                 <td>
                   {log.failureReason && (
                     <span className="failure-reason">{log.failureReason}</span>
                   )}
                 </td>
               </tr>
-            ))}
+            ))
           </tbody>
         </table>
       </div>
