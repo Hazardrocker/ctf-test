@@ -567,6 +567,23 @@ router.get('/leaderboard', protect, async (req, res) => {
 // @access  Private/Admin
 router.get('/users', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
+    const { all } = req.query;
+    
+    if (all === 'true') {
+      // Return all users without pagination for team creation
+      const users = await User.find()
+        .select('-password')
+        .populate('team', 'name')
+        .sort({ username: 1 });
+
+      return res.json({
+        success: true,
+        count: users.length,
+        total: users.length,
+        users
+      });
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;

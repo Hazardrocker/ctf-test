@@ -37,10 +37,10 @@ function AdminCreateTeam() {
           }
         };
 
-        const res = await axios.get('/api/auth/users', config);
-        // Filter out admin users and users who already have a team
-        const availableUsers = (res.data.users || []).filter(u => u.role !== 'admin' && !u.team);
-        setUsers(availableUsers);
+        const res = await axios.get('/api/auth/users?all=true', config);
+        // Filter out admin users but show all users (including those with teams)
+        const allUsers = (res.data.users || []).filter(u => u.role !== 'admin');
+        setUsers(allUsers);
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching users:', err);
@@ -195,8 +195,16 @@ function AdminCreateTeam() {
               size={Math.min(users.length, 6)}
             >
               {users.map(u => (
-                <option key={u._id} value={u._id}>
-                  {u.username} ({u.email})
+                <option 
+                  key={u._id} 
+                  value={u._id}
+                  disabled={u.team && !formData.members.includes(u._id)}
+                  style={{
+                    color: u.team ? '#888' : '#fff',
+                    fontStyle: u.team ? 'italic' : 'normal'
+                  }}
+                >
+                  {u.username} ({u.email}){u.team ? ' - Already in team' : ''}
                 </option>
               ))}
             </select>

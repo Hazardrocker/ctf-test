@@ -132,6 +132,10 @@
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.6;
   font-size: 1rem;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .hints {
@@ -157,6 +161,10 @@
   margin: 0 0 0.5rem 0;
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.6;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .hint-cost {
