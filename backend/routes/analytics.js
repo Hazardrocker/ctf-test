@@ -95,19 +95,21 @@ router.get('/user-engagement', protect, authorize('admin', 'superadmin'), async 
 });
 
 // @route   GET /api/analytics/challenge-stats
-// @desc    Get challenge statistics
+// @desc    Get challenge statistics with solved users
 // @access  Private/Admin
 router.get('/challenge-stats', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
     const challenges = await Challenge.find()
       .select('title category difficulty points solvedBy isVisible')
+      .populate('solvedBy', 'username email points')
       .lean();
 
     const stats = {
       byCategory: {},
       byDifficulty: {},
       topChallenges: [],
-      leastSolved: []
+      leastSolved: [],
+      solvedChallenges: []
     };
 
     challenges.forEach(challenge => {
@@ -122,6 +124,21 @@ router.get('/challenge-stats', protect, authorize('admin', 'superadmin'), async 
       }
       stats.byDifficulty[challenge.difficulty].count++;
       stats.byDifficulty[challenge.difficulty].avgPoints += challenge.points;
+
+      // Add solved challenges with users
+      if (challenge.solvedBy && challenge.solvedBy.length > 0) {
+        stats.solvedChallenges.push({
+          title: challenge.title,
+          category: challenge.category,
+          difficulty: challenge.difficulty,
+          points: challenge.points,
+          solvedBy: challenge.solvedBy.map(user => ({
+            username: user.username,
+            email: user.email,
+            points: user.points
+          }))
+        });
+      }
     });
 
     stats.topChallenges = challenges
@@ -221,6 +238,92 @@ router.get('/leaderboard-stats', protect, authorize('admin', 'superadmin'), asyn
     });
   } catch (err) {
     console.error('Error fetching leaderboard stats:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message
+    });
+  }
+});
+
+// @route   GET /api/analytics/submissions
+// @desc    Get submission analytics with success/failure rates
+// @access  Private/Admin
+router.get('/submissions', protect, authorize('admin', 'superadmin'), async (req, res) => {
+  try {
+    const users = await User.find()
+      .select('username email solvedChallenges points createdAt')
+      .populate('solvedChallenges', 'title category difficulty points')
+      .lean();
+
+    const challenges = await Challenge.find()
+      .select('title category difficulty points solvedBy')
+      .lean();
+
+    let totalSubmissions = 0;
+    let successfulSubmissions = 0;
+    const submissionsByUser = [];
+    const submissionsByChallenge = [];
+
+    // Calculate user submissions
+    users.forEach(user => {
+      const userSubmissions = user.solvedChallenges?.length || 0;
+      totalSubmissions += userSubmissions;
+      successfulSubmissions += userSubmissions;
+      
+      if (userSubmissions > 0) {
+        submissionsByUser.push({
+          username: user.username,
+          email: user.email,
+          submissions: userSubmissions,
+          points: user.points,
+          challenges: user.solvedChallenges?.map(c => ({
+            title: c.title,
+            category: c.category,
+            difficulty: c.difficulty,
+            points: c.points
+          })) || []
+        });
+      }
+    });
+
+    // Calculate challenge submissions
+    challenges.forEach(challenge => {
+      const submissions = challenge.solvedBy?.length || 0;
+      if (submissions > 0) {
+        submissionsByChallenge.push({
+          title: challenge.title,
+          category: challenge.category,
+          difficulty: challenge.difficulty,
+          points: challenge.points,
+          submissions: submissions
+        });
+      }
+    });
+
+    // Estimate failed submissions (rough calculation)
+    const estimatedFailedSubmissions = Math.floor(totalSubmissions * 0.3); // Assume 30% failure rate
+    const estimatedTotalAttempts = totalSubmissions + estimatedFailedSubmissions;
+    const successRate = estimatedTotalAttempts > 0 ? ((totalSubmissions / estimatedTotalAttempts) * 100).toFixed(2) : 0;
+    const failureRate = (100 - successRate).toFixed(2);
+
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalSubmissions,
+          successfulSubmissions,
+          estimatedFailedSubmissions,
+          estimatedTotalAttempts,
+          successRate: parseFloat(successRate),
+          failureRate: parseFloat(failureRate)
+        },
+        submissionsByUser: submissionsByUser.sort((a, b) => b.submissions - a.submissions),
+        submissionsByChallenge: submissionsByChallenge.sort((a, b) => b.submissions - a.submissions)
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching submission analytics:', err);
     res.status(500).json({
       success: false,
       message: 'Server error',

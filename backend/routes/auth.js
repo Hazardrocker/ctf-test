@@ -588,8 +588,7 @@ router.get('/leaderboard', protect, async (req, res) => {
       const users = await User.find(userQuery)
         .select('username points solvedChallenges role team showInLeaderboard lastSolveTime')
         .populate('team', 'name')
-        .sort({ points: -1, lastSolveTime: -1, username: 1 })
-        .limit(50);
+        .sort({ points: -1, lastSolveTime: -1, username: 1 });
 
       console.log('Leaderboard users:', users.map(u => ({ username: u.username, role: u.role, showInLeaderboard: u.showInLeaderboard })));
 

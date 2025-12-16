@@ -89,6 +89,7 @@ function Challenges() {
     { id: 'crypto', name: 'Cryptography' },
     { id: 'forensics', name: 'Forensics' },
     { id: 'reverse', name: 'Reverse Engineering' },
+    { id: 'osint', name: 'OSINT' },
     { id: 'misc', name: 'Miscellaneous' }
   ]
 
@@ -297,7 +298,7 @@ function Challenges() {
                       className={`solve-button ${isSolved ? 'solved' : ''} ${!isAuthenticated ? 'login-required' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        openModal(challenge);
+                        handleChallengeClick(challenge);
                       }}
                       disabled={isSolved}
                     >
