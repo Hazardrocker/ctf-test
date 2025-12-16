@@ -75,8 +75,7 @@ function Challenges() {
   const [challenges, setChallenges] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [selectedChallenge, setSelectedChallenge] = useState(null)
-  const [showModal, setShowModal] = useState(false)
+
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalChallenges, setTotalChallenges] = useState(0)
@@ -148,62 +147,11 @@ function Challenges() {
   };
 
   const openModal = (challenge) => {
-    if (!isAuthenticated) {
-      // Redirect to login if not authenticated
-      window.location.href = '/login';
-      return;
-    }
-
-    setSelectedChallenge(challenge);
-    setShowModal(true);
+    // Always redirect to challenge details page
+    navigate(`/challenges/${challenge._id}`);
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedChallenge(null);
-  };
 
-  const submitFlag = async (flag) => {
-    if (!selectedChallenge || !isAuthenticated) {
-      throw new Error('Challenge not selected or user not authenticated');
-    }
-
-    try {
-      Logger.info('FLAG_SUBMISSION_START', { 
-        challengeId: selectedChallenge._id,
-        challengeTitle: selectedChallenge.title 
-      });
-      const res = await axios.post(
-        `/api/challenges/${selectedChallenge._id}/submit`,
-        { flag }
-      );
-
-      // Update the challenges list to reflect the solved status
-      setChallenges(prevChallenges =>
-        prevChallenges.map(challenge =>
-          challenge._id === selectedChallenge._id
-            ? { ...challenge, solvedBy: [...(challenge.solvedBy || []), user.id] }
-            : challenge
-        )
-      );
-
-      // Update user data in context to reflect new points and solved challenges
-      await updateUserData();
-      Logger.info('FLAG_SUBMISSION_SUCCESS', { 
-        challengeId: selectedChallenge._id,
-        challengeTitle: selectedChallenge.title,
-        points: selectedChallenge.points 
-      });
-
-      return res.data;
-    } catch (err) {
-      Logger.error('FLAG_SUBMISSION_ERROR', { 
-        challengeId: selectedChallenge._id,
-        error: err.response?.data?.message || err.message 
-      });
-      throw new Error(err.response?.data?.message || 'Failed to submit flag');
-    }
-  };
 
   const navigate = useNavigate();
 
@@ -295,14 +243,13 @@ function Challenges() {
                   <div className="challenge-footer">
                     <span className="solved-count">{challenge.solvedBy?.length || 0} solves</span>
                     <button
-                      className={`solve-button ${isSolved ? 'solved' : ''} ${!isAuthenticated ? 'login-required' : ''}`}
+                      className={`solve-button ${isSolved ? 'solved' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleChallengeClick(challenge);
                       }}
-                      disabled={isSolved}
                     >
-                      {isSolved ? 'Solved' : isAuthenticated ? 'Solve Challenge' : 'Login to Solve'}
+                      {isSolved ? 'Solved ✓' : 'View Challenge'}
                     </button>
                   </div>
                 </div>
@@ -361,13 +308,7 @@ function Challenges() {
         )}
       </div>
 
-      {showModal && selectedChallenge && (
-        <FlagSubmissionModal
-          challenge={selectedChallenge}
-          onClose={closeModal}
-          onSubmit={submitFlag}
-        />
-      )}
+
     </div>
   )
 }

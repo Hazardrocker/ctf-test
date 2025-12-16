@@ -247,65 +247,89 @@ router.get('/leaderboard-stats', protect, authorize('admin', 'superadmin'), asyn
 });
 
 // @route   GET /api/analytics/submissions
-// @desc    Get submission analytics with success/failure rates
+// @desc    Get detailed submission analytics with all attempts
 // @access  Private/Admin
 router.get('/submissions', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
-    const users = await User.find()
-      .select('username email solvedChallenges points createdAt')
-      .populate('solvedChallenges', 'title category difficulty points')
+    const Submission = require('../models/Submission');
+    
+    // Get all submissions with user and challenge details
+    const submissions = await Submission.find()
+      .populate('user', 'username email points')
+      .populate('challenge', 'title category difficulty points')
+      .sort({ submittedAt: -1 })
       .lean();
 
-    const challenges = await Challenge.find()
-      .select('title category difficulty points solvedBy')
-      .lean();
-
-    let totalSubmissions = 0;
-    let successfulSubmissions = 0;
-    const submissionsByUser = [];
-    const submissionsByChallenge = [];
-
-    // Calculate user submissions
-    users.forEach(user => {
-      const userSubmissions = user.solvedChallenges?.length || 0;
-      totalSubmissions += userSubmissions;
-      successfulSubmissions += userSubmissions;
-      
-      if (userSubmissions > 0) {
-        submissionsByUser.push({
-          username: user.username,
-          email: user.email,
-          submissions: userSubmissions,
-          points: user.points,
-          challenges: user.solvedChallenges?.map(c => ({
-            title: c.title,
-            category: c.category,
-            difficulty: c.difficulty,
-            points: c.points
-          })) || []
-        });
-      }
-    });
-
-    // Calculate challenge submissions
-    challenges.forEach(challenge => {
-      const submissions = challenge.solvedBy?.length || 0;
-      if (submissions > 0) {
-        submissionsByChallenge.push({
-          title: challenge.title,
-          category: challenge.category,
-          difficulty: challenge.difficulty,
-          points: challenge.points,
-          submissions: submissions
-        });
-      }
-    });
-
-    // Estimate failed submissions (rough calculation)
-    const estimatedFailedSubmissions = Math.floor(totalSubmissions * 0.3); // Assume 30% failure rate
-    const estimatedTotalAttempts = totalSubmissions + estimatedFailedSubmissions;
-    const successRate = estimatedTotalAttempts > 0 ? ((totalSubmissions / estimatedTotalAttempts) * 100).toFixed(2) : 0;
+    const totalSubmissions = submissions.length;
+    const successfulSubmissions = submissions.filter(s => s.isCorrect).length;
+    const failedSubmissions = submissions.filter(s => !s.isCorrect).length;
+    const successRate = totalSubmissions > 0 ? ((successfulSubmissions / totalSubmissions) * 100).toFixed(2) : 0;
     const failureRate = (100 - successRate).toFixed(2);
+
+    // Group by user
+    const submissionsByUser = {};
+    submissions.forEach(sub => {
+      const userId = sub.user._id.toString();
+      if (!submissionsByUser[userId]) {
+        submissionsByUser[userId] = {
+          username: sub.user.username,
+          email: sub.user.email,
+          totalAttempts: 0,
+          successfulAttempts: 0,
+          failedAttempts: 0,
+          points: sub.user.points,
+          submissions: []
+        };
+      }
+      submissionsByUser[userId].totalAttempts++;
+      if (sub.isCorrect) {
+        submissionsByUser[userId].successfulAttempts++;
+      } else {
+        submissionsByUser[userId].failedAttempts++;
+      }
+      submissionsByUser[userId].submissions.push({
+        challenge: sub.challenge.title,
+        category: sub.challenge.category,
+        difficulty: sub.challenge.difficulty,
+        points: sub.challenge.points,
+        submittedFlag: sub.submittedFlag,
+        isCorrect: sub.isCorrect,
+        submittedAt: sub.submittedAt,
+        ipAddress: sub.ipAddress
+      });
+    });
+
+    // Group by challenge
+    const submissionsByChallenge = {};
+    submissions.forEach(sub => {
+      const challengeId = sub.challenge._id.toString();
+      if (!submissionsByChallenge[challengeId]) {
+        submissionsByChallenge[challengeId] = {
+          title: sub.challenge.title,
+          category: sub.challenge.category,
+          difficulty: sub.challenge.difficulty,
+          points: sub.challenge.points,
+          totalAttempts: 0,
+          successfulAttempts: 0,
+          failedAttempts: 0,
+          submissions: []
+        };
+      }
+      submissionsByChallenge[challengeId].totalAttempts++;
+      if (sub.isCorrect) {
+        submissionsByChallenge[challengeId].successfulAttempts++;
+      } else {
+        submissionsByChallenge[challengeId].failedAttempts++;
+      }
+      submissionsByChallenge[challengeId].submissions.push({
+        username: sub.user.username,
+        email: sub.user.email,
+        submittedFlag: sub.submittedFlag,
+        isCorrect: sub.isCorrect,
+        submittedAt: sub.submittedAt,
+        ipAddress: sub.ipAddress
+      });
+    });
 
     res.json({
       success: true,
@@ -313,13 +337,22 @@ router.get('/submissions', protect, authorize('admin', 'superadmin'), async (req
         overview: {
           totalSubmissions,
           successfulSubmissions,
-          estimatedFailedSubmissions,
-          estimatedTotalAttempts,
+          failedSubmissions,
           successRate: parseFloat(successRate),
           failureRate: parseFloat(failureRate)
         },
-        submissionsByUser: submissionsByUser.sort((a, b) => b.submissions - a.submissions),
-        submissionsByChallenge: submissionsByChallenge.sort((a, b) => b.submissions - a.submissions)
+        submissionsByUser: Object.values(submissionsByUser).sort((a, b) => b.totalAttempts - a.totalAttempts),
+        submissionsByChallenge: Object.values(submissionsByChallenge).sort((a, b) => b.totalAttempts - a.totalAttempts),
+        allSubmissions: submissions.map(s => ({
+          username: s.user.username,
+          challenge: s.challenge.title,
+          category: s.challenge.category,
+          submittedFlag: s.submittedFlag,
+          isCorrect: s.isCorrect,
+          points: s.isCorrect ? s.challenge.points : 0,
+          submittedAt: s.submittedAt,
+          ipAddress: s.ipAddress
+        }))
       }
     });
   } catch (err) {

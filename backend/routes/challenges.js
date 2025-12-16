@@ -3,9 +3,12 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Challenge = require('../models/Challenge');
 const User = require('../models/User');
+const Submission = require('../models/Submission');
 const { protect, authorize } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const { sanitizeInput, validateInput, securityHeaders } = require('../middleware/security');
+const requestIp = require('request-ip');
+const UAParser = require('ua-parser-js');
 
 // Real-time logging function
 const logActivity = (action, details = {}) => {
@@ -177,8 +180,25 @@ router.post('/:id/submit', protect, sanitizeInput, async (req, res) => {
       });
     }
 
+    // Get IP and User Agent for tracking
+    const clientIp = requestIp.getClientIp(req);
+    const userAgent = req.get('User-Agent') || 'Unknown';
+    
     // Check flag
-    if (submittedFlag !== challenge.flag.trim()) {
+    const isCorrect = submittedFlag === challenge.flag.trim();
+    
+    // Create submission record (both success and failure)
+    await Submission.create({
+      user: req.user.id,
+      challenge: challenge._id,
+      submittedFlag: submittedFlag,
+      isCorrect: isCorrect,
+      points: isCorrect ? challenge.points : 0,
+      ipAddress: clientIp,
+      userAgent: userAgent
+    });
+    
+    if (!isCorrect) {
       return res.status(400).json({
         success: false,
         message: 'Incorrect flag'
