@@ -682,6 +682,34 @@ router.get('/users/:id', protect, authorize('admin', 'superadmin'), async (req, 
   }
 });
 
+// @route   GET /api/auth/user/:id
+// @desc    Get public user profile by ID
+// @access  Private
+router.get('/user/:id', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select('username points solvedChallenges team createdAt')
+      .populate('team', 'name');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: process.env.NODE_ENV === 'development' ? error.message : 'Error fetching user'
+    });
+  }
+});
+
 // @route   POST /api/auth/reset-platform
 // @desc    Reset all user points, solved challenges, and challenge solves (admin only)
 // @access  Private/Admin

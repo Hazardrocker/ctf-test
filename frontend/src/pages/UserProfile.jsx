@@ -28,7 +28,7 @@ function UserProfile() {
       };
 
       const [userRes, challengesRes] = await Promise.all([
-        axios.get(`/api/auth/users/${userId}`, config),
+        axios.get(`/api/auth/user/${userId}`, config),
         axios.get('/api/challenges', config)
       ]);
 
